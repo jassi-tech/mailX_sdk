@@ -1,30 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
 
-:root {
-  --bg-color: #030712;
-  --card-bg: rgba(17, 24, 39, 0.7);
-  --border-color: rgba(255, 255, 255, 0.1);
-  --accent-primary: #10b981;
-  --accent-secondary: #059669;
-  --text-primary: #f9fafb;
-  --text-secondary: #9ca3af;
-  --font-display: 'Outfit', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --tw-gradient-from: #ffffff;
-  --tw-gradient-to: #9ca3af;
-  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
-}
+@layer base {
+  :root {
+    /* FMDS Base Units */
+    --1: min(1px, 0.052083vw);
+    
+    /* MDS Color Tokens */
+    --color-bg-base: #0f0f13;
+    --color-bg-card: #1a1a24;
+    --color-bg-elevated: #22222f;
+    --color-bg-hover: #2a2a3a;
+    --color-border: #2e2e40;
+    --color-border-dim: #232333;
+    --color-accent: #6c63ff;
+    --color-accent-dim: #5a52e0;
+    --color-accent-glow: rgba(108, 99, 255, 0.15);
+    --color-text-primary: #f0f0f8;
+    --color-text-secondary: #9090a8;
+    --color-text-muted: #5c5c78;
+    --color-success: #22c55e;
+    --color-error: #ef4444;
+  }
 
-body {
-  margin: 0;
-  background-color: var(--bg-color);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
-  background-image: 
-    radial-gradient(circle at 0% 0%, rgba(16, 185, 129, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 100% 100%, rgba(5, 150, 105, 0.15) 0%, transparent 50%);
+  @media (max-width: 767.98px) {
+    :root {
+      --1: min(1px, 0.2vw);
+    }
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-bg-base);
+    color: var(--color-text-primary);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
 }
 
 .glass-card {
