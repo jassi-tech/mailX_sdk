@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { MailX } from 'mailx-sdk';
-import { Send, CheckCircle, AlertCircle, Loader2, User, Mail, Link2 } from 'lucide-react';
+import { Send, CheckCircle, AlertCircle, Loader2, User, Mail, Link2, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
 
 // ─── Component ───────────────────────────────────────────────────────────────
 const SdkTester = () => {
@@ -12,28 +11,26 @@ const SdkTester = () => {
   const [mail, setMail]       = useState('');
   const [link, setLink]       = useState('');
   const [errors, setErrors]   = useState<Record<string, string>>({});
-  const [response, setResponse] = useState<any>(null);
+  const [response, setResponse] = useState<{ success: boolean; message?: string } | null>(null);
   const [loading, setLoading]   = useState(false);
 
   // ── Validation ──────────────────────────────────────────────────────────
   const validate = () => {
     const errs: Record<string, string> = {};
 
-    if (!name.trim())
-      errs.name = 'Name is required.';
+    if (!name.trim()) errs.name = 'Required';
+    if (!mail.trim()) {
+      errs.mail = 'Required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail.trim())) {
+      errs.mail = 'Invalid';
+    }
+    if (!link.trim()) {
+      errs.link = 'Required';
+    } else if (!/^https?:\/\/.+/.test(link.trim())) {
+      errs.link = 'Invalid';
+    }
 
-    if (!mail.trim())
-      errs.mail = 'Email is required.';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail.trim()))
-      errs.mail = 'Enter a valid email address.';
-
-    if (!link.trim())
-      errs.link = 'Link is required.';
-    else if (!/^https?:\/\/.+/.test(link.trim()))
-      errs.link = 'Link must start with http:// or https://';
-
-    if (!apiKey)
-      errs._global = 'VITE_MAILX_API_KEY is not set in your .env file.';
+    if (!apiKey) errs._global = 'API Key missing';
 
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -51,97 +48,158 @@ const SdkTester = () => {
         to: mail.trim(),
         data: { name: name.trim(), survey_link: link.trim() },
       });
-      setResponse(result);
-    } catch (error: any) {
-      setResponse({ success: false, message: error.message ?? 'An unknown error occurred.' });
+      setResponse(result as { success: boolean; message?: string });
+      
+      // Auto-clear success after 3s
+      if (result.success) {
+        setTimeout(() => setResponse(null), 3000);
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error';
+      setResponse({ success: false, message });
     } finally {
       setLoading(false);
     }
   };
 
-  const field = (
-    key: 'name' | 'mail' | 'link',
-    label: string,
-    placeholder: string,
-    Icon: React.ElementType,
-    value: string,
-    setter: (v: string) => void,
-  ) => (
-    <div className="flex flex-col gap-s-8">
-      <label className="flex items-center gap-s-8 text-s-11 font-semibold text-text-muted uppercase tracking-widest">
-        <Icon size={12} />
-        {label}
-      </label>
-      <input
-        className={`w-full bg-bg-elevated border rounded-s-12 p-s-12 px-s-16 text-s-14 text-text-primary outline-none transition-all focus:border-accent focus:ring-s-3 focus:ring-accent/15 focus:bg-bg-hover ${errors[key] ? 'border-error ring-s-3 ring-error/5' : 'border-border'}`}
-        placeholder={placeholder}
-        value={value}
-        onChange={e => {
-          setter(e.target.value);
-          if (errors[key]) setErrors(prev => { const n = { ...prev }; delete n[key]; return n; });
-        }}
-        disabled={loading}
-      />
+  const Field = ({ 
+    id, 
+    label, 
+    placeholder, 
+    icon: Icon, 
+    value, 
+    setter 
+  }: { 
+    id: string, 
+    label: string, 
+    placeholder: string, 
+    icon: React.ElementType, 
+    value: string, 
+    setter: (v: string) => void 
+  }) => (
+    <div className="flex flex-col relative group flex-1 min-w-0">
+      <div className={`
+        flex items-center gap-s-10 p-s-10 px-s-14 rounded-s-14 transition-all duration-300
+        ${errors[id] ? 'bg-error/5 border border-error/20' : 'bg-bg-elevated/40 border border-border hover:border-accent/40 hover:bg-bg-hover/60'}
+        ${loading ? 'opacity-50 pointer-events-none' : ''}
+      `}>
+        <Icon size={14} className={errors[id] ? 'text-error' : 'text-text-muted group-hover:text-accent transition-colors'} />
+        <div className="flex flex-col min-w-0 flex-1">
+          <span className="text-s-10 font-bold uppercase tracking-tighter text-text-muted leading-none mb-s-2">
+            {errors[id] || label}
+          </span>
+          <input
+            className="w-full bg-transparent border-none p-0 text-s-14 text-text-primary outline-none placeholder:text-text-muted/40 font-medium"
+            placeholder={placeholder}
+            value={value}
+            onChange={e => {
+              setter(e.target.value);
+              if (errors[id]) setErrors(prev => { const n = { ...prev }; delete n[id]; return n; });
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-bg-base p-s-32 font-sans">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-bg-base p-s-32 font-sans selection:bg-accent selection:text-white">
       <motion.div
-        initial={{ opacity: 0, scale: 0.98, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="flex flex-col w-full max-w-s-440 bg-bg-card border border-border rounded-s-24 p-s-40 shadow-2xl"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-s-1000"
       >
-        {/* Header */}
-        <div className="flex items-center gap-s-14 mb-s-32">
-          <div className="flex items-center justify-center shrink-0 w-s-44 h-s-44 rounded-s-12 bg-accent/10 border border-accent/15 text-accent">
-            <Send size={18} />
+        <div className="glass-effect rounded-s-24 p-s-12 shadow-2xl overflow-hidden relative border border-white/5">
+          {/* Header & Form Logic Container */}
+          <div className="flex flex-col md:flex-row items-center gap-s-8">
+            
+            {/* Branding Section */}
+            <div className="flex items-center gap-s-14 px-s-16 py-s-8 shrink-0">
+              <div className="w-s-40 h-s-40 rounded-s-12 bg-gradient-to-br from-accent to-accent-dim flex items-center justify-center shadow-lg shadow-accent/20">
+                <Zap size={20} className="text-white" />
+              </div>
+              <div className="hidden lg:block">
+                <h2 className="text-s-14 font-bold text-text-primary tracking-tight leading-tight">Quick Send</h2>
+                <p className="text-s-10 text-text-muted font-medium">MDS Fluid SDK</p>
+              </div>
+            </div>
+
+            {/* Vertical Divider (Desktop) */}
+            <div className="hidden md:block w-s-1 h-s-32 bg-border-dim" />
+
+            {/* Fields Container */}
+            <div className="flex flex-col sm:flex-row gap-s-8 flex-1 w-full px-s-4">
+              <Field id="name" label="Recipient Name" placeholder="John Doe" icon={User} value={name} setter={setName} />
+              <Field id="mail" label="Email Address" placeholder="hello@mailx.com" icon={Mail} value={mail} setter={setMail} />
+              <Field id="link" label="Action link" placeholder="https://..." icon={Link2} value={link} setter={setLink} />
+            </div>
+
+            {/* Action Button */}
+            <div className="shrink-0 w-full md:w-auto p-s-4 md:p-0">
+              <button 
+                onClick={handleSend}
+                disabled={loading}
+                className={`
+                  relative overflow-hidden group
+                  w-full md:w-s-140 h-s-54 rounded-s-16 font-bold text-s-14 flex items-center justify-center gap-s-8 transition-all duration-300
+                  ${loading ? 'bg-bg-hover text-text-muted cursor-not-allowed' : 'bg-accent text-white hover:bg-accent-dim hover:scale-[1.02] active:scale-95 shadow-lg shadow-accent/25'}
+                `}
+              >
+                <AnimatePresence mode='wait'>
+                  {loading ? (
+                    <motion.div key="loader" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2">
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Sending</span>
+                    </motion.div>
+                  ) : (
+                    <motion.div key="text" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2">
+                      <Send size={16} />
+                      <span>Send Now</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                
+                {/* Subtle Glow Effect */}
+                {!loading && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />}
+              </button>
+            </div>
           </div>
-          <div>
-            <h2 className="text-s-18 font-semibold text-text-primary tracking-tight m-0">Quick Send</h2>
-            <p className="text-s-12 text-text-secondary mt-s-3 font-normal m-0">Send via MailX SDK (MDS)</p>
-          </div>
+
+          {/* Status Overlay */}
+          <AnimatePresence>
+            {response && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className={`
+                  mx-s-12 mb-s-12 mt-s-8 p-s-12 rounded-s-14 border flex items-center justify-between gap-s-12
+                  ${response.success ? 'bg-success/5 border-success/20 text-success' : 'bg-error/5 border-error/20 text-error'}
+                `}>
+                  <div className="flex items-center gap-s-10">
+                    {response.success ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                    <span className="text-s-12 font-bold uppercase tracking-tight">
+                      {response.success ? 'Transmission Successful' : `Failure: ${response.message}`}
+                    </span>
+                  </div>
+                  {response.success && (
+                    <div className="hidden sm:block text-s-11 opacity-60 font-medium">
+                      Delivered via MailX High-Speed Relay
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-
-        {/* Fields */}
-        <div className="flex flex-col gap-s-18">
-          {field('name', 'Name',  'John Doe',              User,  name, setName)}
-          {field('mail', 'Email', 'recipient@example.com', Mail,  mail, setMail)}
-          {field('link', 'Link',  'https://…',             Link2, link, setLink)}
+        
+        {/* Footer Info */}
+        <div className="mt-s-16 flex items-center justify-between px-s-8 text-text-muted/40 font-bold text-s-10 uppercase tracking-widest">
+          <div>Environment: Production</div>
+          <div>MDS Version: 2.1.0-Fluid</div>
         </div>
-
-        <div className="h-s-1 bg-border-dim my-s-32" />
-
-        {/* Send Button */}
-        <button 
-          className="w-full p-s-14 bg-accent text-white border-none rounded-s-14 text-s-14 font-semibold flex items-center justify-center gap-s-10 transition-all hover:bg-accent-dim hover:-translate-y-s-2 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-bg-hover disabled:text-text-muted shadow-lg shadow-accent/20"
-          onClick={handleSend} 
-          disabled={loading}
-        >
-          {loading
-            ? <><Loader2 size={18} className="animate-spin" /> Sending…</>
-            : <><Send size={16} /> Send Now</>
-          }
-        </button>
-
-        {/* Response */}
-        <AnimatePresence>
-          {response && (
-            <motion.div
-              key="result"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className={`mt-s-24 p-s-14 rounded-s-16 border flex items-center justify-center gap-s-8 font-semibold text-s-14 ${response.success ? 'bg-success/5 border-success/20 text-success' : 'bg-error/5 border-error/20 text-error'}`}
-            >
-              {response.success
-                ? <><CheckCircle size={16} /> Sent Successfully</>
-                : <><AlertCircle size={16} /> Failed to Send</>
-              }
-            </motion.div>
-          )}
-        </AnimatePresence>
       </motion.div>
     </div>
   );
